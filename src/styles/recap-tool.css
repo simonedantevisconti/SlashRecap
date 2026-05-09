@@ -1,0 +1,242 @@
+.recap-page {
+  width: 100%;
+  padding: 4rem clamp(1rem, 4vw, 3rem) 5rem;
+}
+
+.recap-page-hero {
+  max-width: 900px;
+  margin: 0 auto 3rem;
+  text-align: center;
+}
+
+.recap-page-hero h1 {
+  margin: 0;
+  font-size: clamp(2.6rem, 7vw, 5.8rem);
+  line-height: 0.9;
+  letter-spacing: -0.08em;
+  font-weight: 1000;
+}
+
+.recap-page-hero h1 span {
+  color: var(--sr-green);
+}
+
+.recap-page-hero p {
+  max-width: 680px;
+  margin: 1.2rem auto 0;
+  color: var(--sr-muted);
+  font-size: 1.1rem;
+  line-height: 1.65;
+}
+
+.recap-grid {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.2rem;
+  align-items: stretch;
+}
+
+.recap-card {
+  border: 1px solid var(--sr-soft);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+    var(--sr-card);
+  padding: clamp(1rem, 2vw, 1.4rem);
+  min-height: 620px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+}
+
+.card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--sr-green);
+  font-size: 0.78rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.card-heading h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  letter-spacing: -0.05em;
+  font-weight: 1000;
+}
+
+.counter {
+  white-space: nowrap;
+  border: 1px solid var(--sr-green-border);
+  background: var(--sr-green-soft);
+  color: var(--sr-green);
+  border-radius: 999px;
+  padding: 0.42rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.input-card textarea {
+  width: 100%;
+  min-height: 430px;
+  resize: vertical;
+  border: 1px solid var(--sr-soft);
+  border-radius: 22px;
+  background: #050505;
+  color: var(--sr-text);
+  padding: 1rem;
+  outline: none;
+  line-height: 1.55;
+}
+
+.input-card textarea:focus {
+  border-color: var(--sr-green-border);
+  box-shadow: 0 0 0 4px var(--sr-green-soft);
+}
+
+.input-card textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.copy-button {
+  min-height: 38px;
+  padding: 0.55rem 0.8rem;
+  background: var(--sr-green-soft);
+  color: var(--sr-green);
+  border: 1px solid var(--sr-green-border);
+  border-radius: 999px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.empty-state {
+  height: calc(100% - 72px);
+  min-height: 440px;
+  border: 1px dashed var(--sr-soft);
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: var(--sr-muted);
+  text-align: center;
+  padding: 2rem;
+}
+
+.empty-state img {
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+  margin-bottom: 1rem;
+  opacity: 0.9;
+}
+
+.empty-state h3 {
+  margin: 0 0 0.4rem;
+  color: var(--sr-text);
+  font-weight: 1000;
+}
+
+.empty-state p {
+  margin: 0;
+  max-width: 360px;
+}
+
+.summary-result {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.summary-result h3 {
+  margin: 0;
+  color: var(--sr-green);
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+}
+
+.summary-block {
+  border: 1px solid var(--sr-soft);
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 20px;
+  padding: 1rem;
+}
+
+.summary-block span {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: var(--sr-green);
+  font-size: 0.8rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.summary-block p {
+  margin: 0;
+  color: var(--sr-muted);
+  line-height: 1.6;
+}
+
+.summary-block ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--sr-muted);
+}
+
+.summary-block li {
+  margin-bottom: 0.4rem;
+  line-height: 1.55;
+}
+
+.summary-block li:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .recap-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .recap-card {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .recap-page {
+    padding-top: 2.5rem;
+  }
+
+  .tool-actions .primary-button,
+  .tool-actions .ghost-button {
+    width: 100%;
+  }
+
+  .card-heading {
+    flex-direction: column;
+  }
+
+  .counter {
+    width: fit-content;
+  }
+
+  .input-card textarea {
+    min-height: 360px;
+  }
+}
