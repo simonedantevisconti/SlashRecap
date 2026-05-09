@@ -208,6 +208,12 @@
   margin-bottom: 0;
 }
 
+.tool-error {
+  margin: 0.8rem 0 0;
+  color: var(--sr-danger);
+  font-weight: 800;
+}
+
 @media (max-width: 900px) {
   .recap-grid {
     grid-template-columns: 1fr;

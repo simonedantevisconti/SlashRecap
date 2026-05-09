@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { generateRecap } from "../services/recapService";
 import "../styles/recap-tool.css";
 
 const sampleChat = `Mario: Ragazzi domani alle 18 ci vediamo?
@@ -14,6 +15,8 @@ const RecapTool = () => {
   const [chatText, setChatText] = useState("");
   const [summary, setSummary] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const messageCount = useMemo(() => {
     if (!chatText.trim()) return 0;
@@ -24,73 +27,43 @@ const RecapTool = () => {
       .filter(Boolean).length;
   }, [chatText]);
 
-  const generateLocalRecap = () => {
+  const generateAiRecap = async () => {
     const cleanText = chatText.trim();
 
     if (!cleanText) {
-      setSummary({
-        title: "Nessuna chat rilevata",
-        short:
-          "Incolla una conversazione WhatsApp per generare il tuo primo recap.",
-        important: [],
-        decisions: [],
-        openQuestions: [],
-        actions: [],
-      });
-
+      setSummary(null);
+      setError("Incolla una chat prima di generare il recap.");
       return;
     }
 
-    const lines = cleanText
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
+    try {
+      setIsLoading(true);
+      setError("");
+      setCopied(false);
 
-    const people = [
-      ...new Set(
-        lines
-          .map((line) => line.split(":")[0]?.trim())
-          .filter((name) => name && name.length < 30),
-      ),
-    ];
+      const aiSummary = await generateRecap(cleanText);
 
-    const questionLines = lines.filter((line) => line.includes("?"));
-
-    setSummary({
-      title: "/recap generato",
-      short: `Ho analizzato ${lines.length} messaggi. Questa è una prima demo locale: nello step successivo collegheremo una vera AI per creare riassunti molto più intelligenti.`,
-      important: [
-        `Messaggi analizzati: ${lines.length}`,
-        people.length > 0
-          ? `Persone rilevate: ${people.join(", ")}`
-          : "Persone rilevate: non chiare",
-        "La conversazione è stata trasformata in un recap più leggibile.",
-      ],
-      decisions: [
-        "Questa demo non interpreta ancora decisioni reali con AI.",
-        "Il prossimo step sarà collegare una Function per generare un riassunto intelligente.",
-      ],
-      openQuestions:
-        questionLines.length > 0
-          ? questionLines.slice(0, 4)
-          : ["Nessuna domanda rilevata automaticamente."],
-      actions: [
-        "Controlla se nel recap mancano informazioni importanti.",
-        "Quando collegheremo l'AI, qui compariranno attività, risposte consigliate e cose da non perdere.",
-      ],
-    });
+      setSummary(aiSummary);
+    } catch (error) {
+      console.error(error);
+      setError(error.message || "Errore durante la generazione del recap.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const loadExample = () => {
     setChatText(sampleChat);
     setSummary(null);
     setCopied(false);
+    setError("");
   };
 
   const resetChat = () => {
     setChatText("");
     setSummary(null);
     setCopied(false);
+    setError("");
   };
 
   const copySummary = async () => {
@@ -147,9 +120,10 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
           <button
             type="button"
             className="primary-button"
-            onClick={generateLocalRecap}
+            onClick={generateAiRecap}
+            disabled={isLoading}
           >
-            Genera /recap
+            {isLoading ? "Sto generando..." : "Genera /recap"}
           </button>
 
           <button type="button" className="ghost-button" onClick={loadExample}>
@@ -164,6 +138,8 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
             Cancella
           </button>
         </div>
+
+        {error && <p className="tool-error">{error}</p>}
       </div>
 
       <div className="recap-card output-card">
