@@ -154,6 +154,8 @@ const RecapTool = () => {
       ".m4a",
       ".wav",
       ".webm",
+      ".ogg",
+      ".opus",
     ];
 
     const lowerFilename = file.name.toLowerCase();
@@ -164,7 +166,7 @@ const RecapTool = () => {
 
     if (!isSupportedAudio) {
       setError(
-        "Formato audio non supportato. Usa mp3, mp4, mpeg, mpga, m4a, wav o webm.",
+        "Formato audio non supportato. Usa mp3, mp4, mpeg, mpga, m4a, wav, webm, ogg o opus.",
       );
       setUploadedAudioName("");
 
@@ -290,7 +292,7 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
               <input
                 ref={audioInputRef}
                 type="file"
-                accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm,audio/*"
+                accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm,.ogg,.opus,audio/*"
                 onChange={handleAudioUpload}
                 disabled={isTranscribing}
               />

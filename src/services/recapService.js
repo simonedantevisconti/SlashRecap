@@ -26,7 +26,19 @@ export async function transcribeAudio(audioFile) {
     body: formData,
   });
 
-  const data = await response.json();
+  const rawText = await response.text();
+
+  let data;
+
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    console.error("Risposta non JSON dalla function audio:", rawText);
+
+    throw new Error(
+      `Risposta non valida dalla function audio. Status: ${response.status}. Controlla il terminale di netlify dev.`,
+    );
+  }
 
   if (!response.ok) {
     throw new Error(data.error || "Errore durante la trascrizione audio");
