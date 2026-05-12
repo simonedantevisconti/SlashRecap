@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { generateRecap } from "../services/recapService";
+import { generateRecap, transcribeAudio } from "../services/recapService";
 import "../styles/recap-tool.css";
 
 const sampleChat = `Mario: Ragazzi domani alle 18 ci vediamo?
@@ -12,15 +12,18 @@ Luca: Io dolce
 Marco: Perfetto, allora confermato`;
 
 const RecapTool = () => {
-  const fileInputRef = useRef(null);
+  const txtInputRef = useRef(null);
+  const audioInputRef = useRef(null);
 
   const [chatText, setChatText] = useState("");
   const [summary, setSummary] = useState(null);
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [error, setError] = useState("");
 
   const [uploadedFileName, setUploadedFileName] = useState("");
+  const [uploadedAudioName, setUploadedAudioName] = useState("");
 
   const messageCount = useMemo(() => {
     if (!chatText.trim()) return 0;
@@ -36,7 +39,9 @@ const RecapTool = () => {
 
     if (!cleanText) {
       setSummary(null);
-      setError("Incolla una chat o carica un file .txt prima di generare il recap.");
+      setError(
+        "Incolla una chat, carica un file .txt o trascrivi un audio prima di generare il recap.",
+      );
       return;
     }
 
@@ -62,6 +67,7 @@ const RecapTool = () => {
     setCopied(false);
     setError("");
     setUploadedFileName("");
+    setUploadedAudioName("");
   };
 
   const resetChat = () => {
@@ -70,9 +76,14 @@ const RecapTool = () => {
     setCopied(false);
     setError("");
     setUploadedFileName("");
+    setUploadedAudioName("");
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    if (txtInputRef.current) {
+      txtInputRef.current.value = "";
+    }
+
+    if (audioInputRef.current) {
+      audioInputRef.current.value = "";
     }
   };
 
@@ -85,7 +96,9 @@ const RecapTool = () => {
       file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt");
 
     if (!isTxtFile) {
-      setError("Formato non valido. Carica un file .txt esportato da WhatsApp.");
+      setError(
+        "Formato non valido. Carica un file .txt esportato da WhatsApp.",
+      );
       setUploadedFileName("");
       return;
     }
@@ -94,7 +107,9 @@ const RecapTool = () => {
     const maxSizeInBytes = maxSizeInMb * 1024 * 1024;
 
     if (file.size > maxSizeInBytes) {
-      setError(`Il file è troppo grande. Per ora carica un file massimo di ${maxSizeInMb} MB.`);
+      setError(
+        `Il file è troppo grande. Per ora carica un file massimo di ${maxSizeInMb} MB.`,
+      );
       setUploadedFileName("");
       return;
     }
@@ -115,6 +130,7 @@ const RecapTool = () => {
       setCopied(false);
       setError("");
       setUploadedFileName(file.name);
+      setUploadedAudioName("");
     };
 
     reader.onerror = () => {
@@ -123,6 +139,76 @@ const RecapTool = () => {
     };
 
     reader.readAsText(file, "UTF-8");
+  };
+
+  const handleAudioUpload = async (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    const allowedExtensions = [
+      ".mp3",
+      ".mp4",
+      ".mpeg",
+      ".mpga",
+      ".m4a",
+      ".wav",
+      ".webm",
+    ];
+
+    const lowerFilename = file.name.toLowerCase();
+
+    const isSupportedAudio = allowedExtensions.some((extension) =>
+      lowerFilename.endsWith(extension),
+    );
+
+    if (!isSupportedAudio) {
+      setError(
+        "Formato audio non supportato. Usa mp3, mp4, mpeg, mpga, m4a, wav o webm.",
+      );
+      setUploadedAudioName("");
+
+      if (audioInputRef.current) {
+        audioInputRef.current.value = "";
+      }
+
+      return;
+    }
+
+    const maxSizeInMb = 4;
+    const maxSizeInBytes = maxSizeInMb * 1024 * 1024;
+
+    if (file.size > maxSizeInBytes) {
+      setError(
+        `Audio troppo grande. Per questa MVP usa un file massimo di ${maxSizeInMb} MB.`,
+      );
+      setUploadedAudioName("");
+
+      if (audioInputRef.current) {
+        audioInputRef.current.value = "";
+      }
+
+      return;
+    }
+
+    try {
+      setIsTranscribing(true);
+      setError("");
+      setSummary(null);
+      setCopied(false);
+      setUploadedAudioName(file.name);
+
+      const data = await transcribeAudio(file);
+
+      setChatText(data.text);
+      setUploadedFileName("");
+    } catch (error) {
+      console.error(error);
+      setError(error.message || "Errore durante la trascrizione audio.");
+      setUploadedAudioName("");
+    } finally {
+      setIsTranscribing(false);
+    }
   };
 
   const copySummary = async () => {
@@ -169,28 +255,58 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
           </span>
         </div>
 
-        <div className="upload-panel">
-          <div>
-            <h3>Carica chat WhatsApp</h3>
-            <p>
-              Esporta la conversazione da WhatsApp in formato <strong>.txt</strong> e caricala qui.
-            </p>
+        <div className="upload-stack">
+          <div className="upload-panel">
+            <div>
+              <h3>Carica chat WhatsApp</h3>
+              <p>
+                Esporta la conversazione da WhatsApp in formato{" "}
+                <strong>.txt</strong> e caricala qui.
+              </p>
+            </div>
+
+            <label className="upload-button">
+              Carica file .txt
+              <input
+                ref={txtInputRef}
+                type="file"
+                accept=".txt,text/plain"
+                onChange={handleTxtUpload}
+              />
+            </label>
           </div>
 
-          <label className="upload-button">
-            Carica file .txt
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".txt,text/plain"
-              onChange={handleTxtUpload}
-            />
-          </label>
+          <div className="upload-panel audio-panel">
+            <div>
+              <h3>Trascrivi audio</h3>
+              <p>
+                Carica un vocale o un audio breve. Verrà trasformato in testo
+                nella textarea.
+              </p>
+            </div>
+
+            <label className="upload-button audio-button">
+              {isTranscribing ? "Trascrivo..." : "Carica audio"}
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm,audio/*"
+                onChange={handleAudioUpload}
+                disabled={isTranscribing}
+              />
+            </label>
+          </div>
         </div>
 
         {uploadedFileName && (
           <p className="uploaded-file">
             File caricato: <strong>{uploadedFileName}</strong>
+          </p>
+        )}
+
+        {uploadedAudioName && (
+          <p className="uploaded-file">
+            Audio caricato: <strong>{uploadedAudioName}</strong>
           </p>
         )}
 
@@ -201,7 +317,7 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
             setSummary(null);
             setError("");
           }}
-          placeholder={`Oppure incolla qui la chat WhatsApp...\n\nEsempio:\nMario: ragazzi domani alle 18?\nSara: io ci sono\nLuca: arrivo più tardi`}
+          placeholder={`Oppure incolla qui la chat WhatsApp o il testo trascritto...\n\nEsempio:\nMario: ragazzi domani alle 18?\nSara: io ci sono\nLuca: arrivo più tardi`}
         />
 
         <div className="tool-actions">
@@ -209,12 +325,17 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
             type="button"
             className="primary-button"
             onClick={generateAiRecap}
-            disabled={isLoading}
+            disabled={isLoading || isTranscribing}
           >
             {isLoading ? "Sto generando..." : "Genera /recap"}
           </button>
 
-          <button type="button" className="ghost-button" onClick={loadExample}>
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={loadExample}
+            disabled={isTranscribing}
+          >
             Esempio
           </button>
 
@@ -222,6 +343,7 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
             type="button"
             className="ghost-button danger"
             onClick={resetChat}
+            disabled={isTranscribing}
           >
             Cancella
           </button>
@@ -249,8 +371,8 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
             <img src="/resume-logo-plain.png" alt="" />
             <h3>Nessun recap generato</h3>
             <p>
-              Incolla una chat, carica un file .txt e clicca su{" "}
-              <strong>Genera /recap</strong>.
+              Incolla una chat, carica un file .txt o trascrivi un audio, poi
+              clicca su <strong>Genera /recap</strong>.
             </p>
           </div>
         ) : (

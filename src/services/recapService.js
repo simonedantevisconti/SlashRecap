@@ -15,3 +15,22 @@ export async function generateRecap(chatText) {
 
   return data.summary;
 }
+
+export async function transcribeAudio(audioFile) {
+  const formData = new FormData();
+
+  formData.append("audio", audioFile);
+
+  const response = await fetch("/.netlify/functions/transcribeAudio", {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "Errore durante la trascrizione audio");
+  }
+
+  return data;
+}
