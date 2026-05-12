@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { generateRecap } from "../services/recapService";
 import "../styles/recap-tool.css";
 
@@ -12,11 +12,15 @@ Luca: Io dolce
 Marco: Perfetto, allora confermato`;
 
 const RecapTool = () => {
+  const fileInputRef = useRef(null);
+
   const [chatText, setChatText] = useState("");
   const [summary, setSummary] = useState(null);
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [uploadedFileName, setUploadedFileName] = useState("");
 
   const messageCount = useMemo(() => {
     if (!chatText.trim()) return 0;
@@ -32,7 +36,7 @@ const RecapTool = () => {
 
     if (!cleanText) {
       setSummary(null);
-      setError("Incolla una chat prima di generare il recap.");
+      setError("Incolla una chat o carica un file .txt prima di generare il recap.");
       return;
     }
 
@@ -57,6 +61,7 @@ const RecapTool = () => {
     setSummary(null);
     setCopied(false);
     setError("");
+    setUploadedFileName("");
   };
 
   const resetChat = () => {
@@ -64,6 +69,60 @@ const RecapTool = () => {
     setSummary(null);
     setCopied(false);
     setError("");
+    setUploadedFileName("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleTxtUpload = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    const isTxtFile =
+      file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt");
+
+    if (!isTxtFile) {
+      setError("Formato non valido. Carica un file .txt esportato da WhatsApp.");
+      setUploadedFileName("");
+      return;
+    }
+
+    const maxSizeInMb = 2;
+    const maxSizeInBytes = maxSizeInMb * 1024 * 1024;
+
+    if (file.size > maxSizeInBytes) {
+      setError(`Il file è troppo grande. Per ora carica un file massimo di ${maxSizeInMb} MB.`);
+      setUploadedFileName("");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const text = String(reader.result || "").trim();
+
+      if (!text) {
+        setError("Il file sembra vuoto. Prova con un altro file .txt.");
+        setUploadedFileName("");
+        return;
+      }
+
+      setChatText(text);
+      setSummary(null);
+      setCopied(false);
+      setError("");
+      setUploadedFileName(file.name);
+    };
+
+    reader.onerror = () => {
+      setError("Non sono riuscito a leggere il file. Riprova.");
+      setUploadedFileName("");
+    };
+
+    reader.readAsText(file, "UTF-8");
   };
 
   const copySummary = async () => {
@@ -102,7 +161,7 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
         <div className="card-heading">
           <div>
             <p className="eyebrow">Step 01</p>
-            <h2>Incolla la tua chat</h2>
+            <h2>Incolla o carica la tua chat</h2>
           </div>
 
           <span className="counter">
@@ -110,10 +169,39 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
           </span>
         </div>
 
+        <div className="upload-panel">
+          <div>
+            <h3>Carica chat WhatsApp</h3>
+            <p>
+              Esporta la conversazione da WhatsApp in formato <strong>.txt</strong> e caricala qui.
+            </p>
+          </div>
+
+          <label className="upload-button">
+            Carica file .txt
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,text/plain"
+              onChange={handleTxtUpload}
+            />
+          </label>
+        </div>
+
+        {uploadedFileName && (
+          <p className="uploaded-file">
+            File caricato: <strong>{uploadedFileName}</strong>
+          </p>
+        )}
+
         <textarea
           value={chatText}
-          onChange={(event) => setChatText(event.target.value)}
-          placeholder={`Incolla qui la chat WhatsApp...\n\nEsempio:\nMario: ragazzi domani alle 18?\nSara: io ci sono\nLuca: arrivo più tardi`}
+          onChange={(event) => {
+            setChatText(event.target.value);
+            setSummary(null);
+            setError("");
+          }}
+          placeholder={`Oppure incolla qui la chat WhatsApp...\n\nEsempio:\nMario: ragazzi domani alle 18?\nSara: io ci sono\nLuca: arrivo più tardi`}
         />
 
         <div className="tool-actions">
@@ -161,7 +249,8 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
             <img src="/resume-logo-plain.png" alt="" />
             <h3>Nessun recap generato</h3>
             <p>
-              Incolla una chat e clicca su <strong>Genera /recap</strong>.
+              Incolla una chat, carica un file .txt e clicca su{" "}
+              <strong>Genera /recap</strong>.
             </p>
           </div>
         ) : (
