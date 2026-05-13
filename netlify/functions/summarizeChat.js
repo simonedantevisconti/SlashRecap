@@ -1,6 +1,177 @@
 import axios from "axios";
+import { adminAuth, adminDb } from "./firebaseAdmin.js";
 
 const KIMI_API_URL = "https://api.moonshot.ai/v1/chat/completions";
+
+const PLAN_LIMITS = {
+  free: {
+    label: "Free",
+    dailyLimit: 3,
+    monthlyLimit: 30,
+  },
+  starter: {
+    label: "Starter",
+    dailyLimit: 40,
+    monthlyLimit: 1200,
+  },
+  pro: {
+    label: "Pro",
+    dailyLimit: 100,
+    monthlyLimit: 3000,
+  },
+};
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getMonthKey() {
+  return new Date().toISOString().slice(0, 7);
+}
+
+function getMessageCount(chatText) {
+  return chatText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean).length;
+}
+
+function getBearerToken(event) {
+  const authHeader =
+    event.headers.authorization || event.headers.Authorization || "";
+
+  if (!authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+
+  return authHeader.replace("Bearer ", "").trim();
+}
+
+function normalizeSummary(summary) {
+  return {
+    title: summary.title || "Recap WhatsApp",
+    short: summary.short || "Nessun riassunto disponibile.",
+    important: Array.isArray(summary.important)
+      ? summary.important
+      : ["Nessun punto importante rilevato"],
+    decisions: Array.isArray(summary.decisions)
+      ? summary.decisions
+      : ["Nessuna decisione chiara rilevata"],
+    openQuestions: Array.isArray(summary.openQuestions)
+      ? summary.openQuestions
+      : ["Nessuna domanda aperta rilevata"],
+    actions: Array.isArray(summary.actions)
+      ? summary.actions
+      : ["Nessuna azione necessaria rilevata"],
+  };
+}
+
+async function ensureUserProfile(decodedToken) {
+  const userRef = adminDb.collection("users").doc(decodedToken.uid);
+  const snapshot = await userRef.get();
+
+  const todayKey = getTodayKey();
+  const monthKey = getMonthKey();
+
+  if (!snapshot.exists) {
+    const payload = {
+      email: decodedToken.email || "",
+      displayName: decodedToken.name || "",
+      photoURL: decodedToken.picture || "",
+      plan: "free",
+      recapDailyCount: 0,
+      recapMonthlyCount: 0,
+      usageDay: todayKey,
+      usageMonth: monthKey,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await userRef.set(payload);
+
+    return payload;
+  }
+
+  const profile = snapshot.data();
+
+  const updates = {};
+
+  if (profile.usageDay !== todayKey) {
+    updates.usageDay = todayKey;
+    updates.recapDailyCount = 0;
+    profile.usageDay = todayKey;
+    profile.recapDailyCount = 0;
+  }
+
+  if (profile.usageMonth !== monthKey) {
+    updates.usageMonth = monthKey;
+    updates.recapMonthlyCount = 0;
+    profile.usageMonth = monthKey;
+    profile.recapMonthlyCount = 0;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    updates.updatedAt = new Date();
+    await userRef.update(updates);
+  }
+
+  return profile;
+}
+
+async function checkAndIncrementUsage(uid) {
+  const userRef = adminDb.collection("users").doc(uid);
+  const todayKey = getTodayKey();
+  const monthKey = getMonthKey();
+
+  return adminDb.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(userRef);
+
+    if (!snapshot.exists) {
+      throw new Error("Profilo utente non trovato.");
+    }
+
+    const profile = snapshot.data();
+
+    const plan = profile.plan || "free";
+    const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+
+    const shouldResetDay = profile.usageDay !== todayKey;
+    const shouldResetMonth = profile.usageMonth !== monthKey;
+
+    const dailyCount = shouldResetDay ? 0 : profile.recapDailyCount || 0;
+    const monthlyCount = shouldResetMonth ? 0 : profile.recapMonthlyCount || 0;
+
+    if (dailyCount >= limits.dailyLimit) {
+      return {
+        allowed: false,
+        error: `Hai raggiunto il limite giornaliero del piano ${limits.label}: ${limits.dailyLimit} recap.`,
+      };
+    }
+
+    if (monthlyCount >= limits.monthlyLimit) {
+      return {
+        allowed: false,
+        error: `Hai raggiunto il limite mensile del piano ${limits.label}: ${limits.monthlyLimit} recap.`,
+      };
+    }
+
+    transaction.update(userRef, {
+      usageDay: todayKey,
+      usageMonth: monthKey,
+      recapDailyCount: dailyCount + 1,
+      recapMonthlyCount: monthlyCount + 1,
+      updatedAt: new Date(),
+    });
+
+    return {
+      allowed: true,
+      plan,
+      limits,
+      recapDailyCount: dailyCount + 1,
+      recapMonthlyCount: monthlyCount + 1,
+    };
+  });
+}
 
 export async function handler(event) {
   if (event.httpMethod !== "POST") {
@@ -11,6 +182,21 @@ export async function handler(event) {
   }
 
   try {
+    const token = getBearerToken(event);
+
+    if (!token) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({
+          error: "Devi accedere per generare un recap.",
+        }),
+      };
+    }
+
+    const decodedToken = await adminAuth.verifyIdToken(token);
+
+    await ensureUserProfile(decodedToken);
+
     const { chatText } = JSON.parse(event.body || "{}");
 
     if (!chatText || !chatText.trim()) {
@@ -22,12 +208,25 @@ export async function handler(event) {
       };
     }
 
-    if (chatText.length > 30000) {
+    const cleanText = chatText.trim();
+
+    if (cleanText.length > 30000) {
       return {
         statusCode: 400,
         body: JSON.stringify({
           error:
             "La chat è troppo lunga per questa prima versione. Prova con meno messaggi.",
+        }),
+      };
+    }
+
+    const usageResult = await checkAndIncrementUsage(decodedToken.uid);
+
+    if (!usageResult.allowed) {
+      return {
+        statusCode: 403,
+        body: JSON.stringify({
+          error: usageResult.error,
         }),
       };
     }
@@ -61,7 +260,7 @@ Regole:
 
 Conversazione WhatsApp:
 
-${chatText}
+${cleanText}
 `;
 
     const response = await axios.post(
@@ -103,8 +302,8 @@ ${chatText}
     let summary;
 
     try {
-      summary = JSON.parse(content);
-    } catch (error) {
+      summary = normalizeSummary(JSON.parse(content));
+    } catch {
       return {
         statusCode: 500,
         body: JSON.stringify({
@@ -114,10 +313,30 @@ ${chatText}
       };
     }
 
+    const recapRef = adminDb
+      .collection("users")
+      .doc(decodedToken.uid)
+      .collection("recaps")
+      .doc();
+
+    await recapRef.set({
+      ...summary,
+      originalTextPreview: cleanText.slice(0, 500),
+      messageCount: getMessageCount(cleanText),
+      createdAt: new Date(),
+    });
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         summary,
+        usage: {
+          plan: usageResult.plan,
+          recapDailyCount: usageResult.recapDailyCount,
+          recapMonthlyCount: usageResult.recapMonthlyCount,
+          dailyLimit: usageResult.limits.dailyLimit,
+          monthlyLimit: usageResult.limits.monthlyLimit,
+        },
       }),
     };
   } catch (error) {

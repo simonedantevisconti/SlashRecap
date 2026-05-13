@@ -1,8 +1,19 @@
+import { auth } from "../firebase";
+
 export async function generateRecap(chatText) {
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("Devi accedere per generare un recap.");
+  }
+
+  const token = await user.getIdToken();
+
   const response = await fetch("/.netlify/functions/summarizeChat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ chatText }),
   });

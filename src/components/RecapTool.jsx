@@ -2,8 +2,6 @@ import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { generateRecap, transcribeAudio } from "../services/recapService";
 import { useAuth } from "../context/AuthContext";
-import { saveRecapToHistory } from "../services/historyService";
-import { canGenerateRecap, incrementRecapUsage } from "../services/userService";
 import "../styles/recap-tool.css";
 
 const sampleChat = `Mario: Ragazzi domani alle 18 ci vediamo?
@@ -53,45 +51,67 @@ const RecapTool = () => {
       return;
     }
 
+    if (!user) {
+      setSummary(null);
+      setSaveStatus("");
+      setError("Devi accedere per generare e salvare un recap.");
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError("");
       setSaveStatus("");
       setCopied(false);
 
-      if (user) {
-        const limitCheck = await canGenerateRecap(user.uid);
-
-        if (!limitCheck.allowed) {
-          setError(limitCheck.reason);
-          setIsLoading(false);
-          return;
-        }
-      }
-
       const aiSummary = await generateRecap(cleanText);
 
       setSummary(aiSummary);
 
-      if (user) {
-        await saveRecapToHistory(user.uid, {
-          ...aiSummary,
-          originalTextPreview: cleanText.slice(0, 500),
-          messageCount,
-        });
+      await refreshProfile(user.uid);
 
-        await incrementRecapUsage(user.uid);
-        await refreshProfile(user.uid);
-
-        setSaveStatus("Recap salvato nello storico. Utilizzo aggiornato.");
-      } else {
-        setSaveStatus("Accedi per salvare questo recap nello storico.");
-      }
+      setSaveStatus("Recap generato e salvato nello storico.");
     } catch (error) {
       console.error(error);
       setError(error.message || "Errore durante la generazione del recap.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadExample = () => {
+    setChatText(sampleChat);
+    setSummary(null);
+    setCopied(false);
+    setError("");
+    setSaveStatus("");
+    setUploadedFileName("");
+    setUploadedAudioName("");
+
+    if (txtInputRef.current) {
+      txtInputRef.current.value = "";
+    }
+
+    if (audioInputRef.current) {
+      audioInputRef.current.value = "";
+    }
+  };
+
+  const resetChat = () => {
+    setChatText("");
+    setSummary(null);
+    setCopied(false);
+    setError("");
+    setSaveStatus("");
+    setUploadedFileName("");
+    setUploadedAudioName("");
+
+    if (txtInputRef.current) {
+      txtInputRef.current.value = "";
+    }
+
+    if (audioInputRef.current) {
+      audioInputRef.current.value = "";
     }
   };
 
