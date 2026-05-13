@@ -67,6 +67,21 @@
   font-weight: 900;
 }
 
+.header-logout {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  border-radius: 999px;
+  padding: 9px 13px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.header-logout:hover {
+  color: rgb(37, 211, 102);
+  border-color: rgba(37, 211, 102, 0.4);
+}
+
 @media (max-width: 640px) {
   .site-header {
     min-height: 68px;

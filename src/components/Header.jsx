@@ -1,7 +1,10 @@
 import { Link, NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "../styles/header.css";
 
 const Header = () => {
+  const { user, logout } = useAuth();
+
   return (
     <header className="site-header">
       <Link to="/" className="brand">
@@ -22,6 +25,18 @@ const Header = () => {
         <NavLink to="/recap" className="nav-cta">
           Prova /recap
         </NavLink>
+
+        {user ? (
+          <>
+            <NavLink to="/dashboard">Dashboard</NavLink>
+            <NavLink to="/history">Storico</NavLink>
+            <button type="button" className="header-logout" onClick={logout}>
+              Esci
+            </button>
+          </>
+        ) : (
+          <NavLink to="/login">Accedi</NavLink>
+        )}
       </nav>
     </header>
   );

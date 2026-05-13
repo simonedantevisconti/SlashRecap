@@ -1,5 +1,8 @@
 import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { generateRecap, transcribeAudio } from "../services/recapService";
+import { useAuth } from "../context/AuthContext";
+import { saveRecapToHistory } from "../services/historyService";
 import "../styles/recap-tool.css";
 
 const sampleChat = `Mario: Ragazzi domani alle 18 ci vediamo?
@@ -12,6 +15,8 @@ Luca: Io dolce
 Marco: Perfetto, allora confermato`;
 
 const RecapTool = () => {
+  const { user } = useAuth();
+
   const txtInputRef = useRef(null);
   const audioInputRef = useRef(null);
 
@@ -21,6 +26,7 @@ const RecapTool = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [error, setError] = useState("");
+  const [saveStatus, setSaveStatus] = useState("");
 
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [uploadedAudioName, setUploadedAudioName] = useState("");
@@ -39,6 +45,7 @@ const RecapTool = () => {
 
     if (!cleanText) {
       setSummary(null);
+      setSaveStatus("");
       setError(
         "Incolla una chat, carica un file .txt o trascrivi un audio prima di generare il recap.",
       );
@@ -48,11 +55,24 @@ const RecapTool = () => {
     try {
       setIsLoading(true);
       setError("");
+      setSaveStatus("");
       setCopied(false);
 
       const aiSummary = await generateRecap(cleanText);
 
       setSummary(aiSummary);
+
+      if (user) {
+        await saveRecapToHistory(user.uid, {
+          ...aiSummary,
+          originalTextPreview: cleanText.slice(0, 500),
+          messageCount,
+        });
+
+        setSaveStatus("Recap salvato nello storico.");
+      } else {
+        setSaveStatus("Accedi per salvare questo recap nello storico.");
+      }
     } catch (error) {
       console.error(error);
       setError(error.message || "Errore durante la generazione del recap.");
@@ -66,6 +86,7 @@ const RecapTool = () => {
     setSummary(null);
     setCopied(false);
     setError("");
+    setSaveStatus("");
     setUploadedFileName("");
     setUploadedAudioName("");
   };
@@ -75,6 +96,7 @@ const RecapTool = () => {
     setSummary(null);
     setCopied(false);
     setError("");
+    setSaveStatus("");
     setUploadedFileName("");
     setUploadedAudioName("");
 
@@ -99,6 +121,7 @@ const RecapTool = () => {
       setError(
         "Formato non valido. Carica un file .txt esportato da WhatsApp.",
       );
+      setSaveStatus("");
       setUploadedFileName("");
       return;
     }
@@ -110,6 +133,7 @@ const RecapTool = () => {
       setError(
         `Il file è troppo grande. Per ora carica un file massimo di ${maxSizeInMb} MB.`,
       );
+      setSaveStatus("");
       setUploadedFileName("");
       return;
     }
@@ -121,6 +145,7 @@ const RecapTool = () => {
 
       if (!text) {
         setError("Il file sembra vuoto. Prova con un altro file .txt.");
+        setSaveStatus("");
         setUploadedFileName("");
         return;
       }
@@ -129,12 +154,14 @@ const RecapTool = () => {
       setSummary(null);
       setCopied(false);
       setError("");
+      setSaveStatus("");
       setUploadedFileName(file.name);
       setUploadedAudioName("");
     };
 
     reader.onerror = () => {
       setError("Non sono riuscito a leggere il file. Riprova.");
+      setSaveStatus("");
       setUploadedFileName("");
     };
 
@@ -168,6 +195,7 @@ const RecapTool = () => {
       setError(
         "Formato audio non supportato. Usa mp3, mp4, mpeg, mpga, m4a, wav, webm, ogg o opus.",
       );
+      setSaveStatus("");
       setUploadedAudioName("");
 
       if (audioInputRef.current) {
@@ -184,6 +212,7 @@ const RecapTool = () => {
       setError(
         `Audio troppo grande. Per questa MVP usa un file massimo di ${maxSizeInMb} MB.`,
       );
+      setSaveStatus("");
       setUploadedAudioName("");
 
       if (audioInputRef.current) {
@@ -196,6 +225,7 @@ const RecapTool = () => {
     try {
       setIsTranscribing(true);
       setError("");
+      setSaveStatus("");
       setSummary(null);
       setCopied(false);
       setUploadedAudioName(file.name);
@@ -207,6 +237,7 @@ const RecapTool = () => {
     } catch (error) {
       console.error(error);
       setError(error.message || "Errore durante la trascrizione audio.");
+      setSaveStatus("");
       setUploadedAudioName("");
     } finally {
       setIsTranscribing(false);
@@ -318,6 +349,7 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
             setChatText(event.target.value);
             setSummary(null);
             setError("");
+            setSaveStatus("");
           }}
           placeholder={`Oppure incolla qui la chat WhatsApp o il testo trascritto...\n\nEsempio:\nMario: ragazzi domani alle 18?\nSara: io ci sono\nLuca: arrivo più tardi`}
         />
@@ -352,6 +384,12 @@ ${summary.actions.map((item) => `- ${item}`).join("\n")}
         </div>
 
         {error && <p className="tool-error">{error}</p>}
+
+        {saveStatus && (
+          <p className="save-status">
+            {saveStatus} {!user && <Link to="/login">Accedi</Link>}
+          </p>
+        )}
       </div>
 
       <div className="recap-card output-card">

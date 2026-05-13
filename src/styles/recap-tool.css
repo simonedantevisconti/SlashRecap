@@ -316,6 +316,18 @@
   margin-bottom: 0;
 }
 
+.save-status {
+  margin: 12px 0 0;
+  color: rgba(37, 211, 102, 0.95);
+  font-size: 0.92rem;
+}
+
+.save-status a {
+  color: #fff;
+  font-weight: 800;
+  margin-left: 6px;
+}
+
 /* RESPONSIVE */
 
 @media (max-width: 900px) {
