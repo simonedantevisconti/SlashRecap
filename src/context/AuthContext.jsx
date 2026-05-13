@@ -8,17 +8,42 @@ import {
   signOut,
 } from "firebase/auth";
 import { auth } from "../firebase";
+import { ensureUserProfile, getUserProfile } from "../services/userService";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  const refreshProfile = async (userId) => {
+    if (!userId) return null;
+
+    const freshProfile = await getUserProfile(userId);
+
+    setProfile(freshProfile);
+
+    return freshProfile;
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      try {
+        setUser(currentUser);
+
+        if (currentUser) {
+          const userProfile = await ensureUserProfile(currentUser);
+          setProfile(userProfile);
+        } else {
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error("Errore caricamento profilo utente:", error);
+        setProfile(null);
+      } finally {
+        setAuthLoading(false);
+      }
     });
 
     return () => unsubscribe();
@@ -34,24 +59,29 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
+
     return signInWithPopup(auth, provider);
   };
 
   const logout = async () => {
+    setProfile(null);
+
     return signOut(auth);
   };
 
   const value = useMemo(
     () => ({
       user,
+      profile,
       authLoading,
       isLoggedIn: Boolean(user),
       registerWithEmail,
       loginWithEmail,
       loginWithGoogle,
       logout,
+      refreshProfile,
     }),
-    [user, authLoading],
+    [user, profile, authLoading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

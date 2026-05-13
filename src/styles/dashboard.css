@@ -83,8 +83,98 @@
   color: rgba(255, 255, 255, 0.68);
 }
 
+.usage-panel {
+  margin-top: 24px;
+  padding: 28px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(37, 211, 102, 0.18);
+}
+
+.usage-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.usage-heading h2 {
+  margin: 8px 0 0;
+  font-size: 2rem;
+}
+
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(37, 211, 102, 0.12);
+  color: rgb(37, 211, 102);
+  text-transform: uppercase;
+  font-weight: 800;
+  border: 1px solid rgba(37, 211, 102, 0.24);
+}
+
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.usage-card {
+  padding: 22px;
+  border-radius: 22px;
+  background: #0b0b0b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.usage-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.usage-card-top span {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.usage-card-top strong {
+  color: #fff;
+}
+
+.usage-bar {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.usage-bar div {
+  height: 100%;
+  border-radius: 999px;
+  background: rgb(37, 211, 102);
+}
+
+.usage-card p {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.92rem;
+}
+
+
 @media (max-width: 820px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .usage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .usage-heading {
+    flex-direction: column;
   }
 }

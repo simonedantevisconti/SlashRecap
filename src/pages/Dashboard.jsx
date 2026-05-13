@@ -1,9 +1,10 @@
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getPlanLimits } from "../services/userService";
 import "../styles/dashboard.css";
 
 const Dashboard = () => {
-  const { user, authLoading } = useAuth();
+  const { user, profile, authLoading } = useAuth();
 
   if (authLoading) {
     return (
@@ -17,6 +18,22 @@ const Dashboard = () => {
     return <Navigate to="/login" replace />;
   }
 
+  const plan = profile?.plan || "free";
+  const limits = getPlanLimits(plan);
+
+  const dailyCount = profile?.recapDailyCount || 0;
+  const monthlyCount = profile?.recapMonthlyCount || 0;
+
+  const dailyPercentage = Math.min(
+    Math.round((dailyCount / limits.dailyLimit) * 100),
+    100,
+  );
+
+  const monthlyPercentage = Math.min(
+    Math.round((monthlyCount / limits.monthlyLimit) * 100),
+    100,
+  );
+
   return (
     <section className="dashboard-page">
       <div className="dashboard-hero">
@@ -25,8 +42,8 @@ const Dashboard = () => {
         <h1>Ciao, {user.displayName || user.email}</h1>
 
         <p>
-          Da qui puoi creare nuovi recap, consultare lo storico e preparare le
-          prossime funzioni premium della piattaforma.
+          Qui puoi controllare il tuo piano, i recap disponibili e lo storico
+          delle chat già riassunte.
         </p>
 
         <div className="dashboard-actions">
@@ -40,21 +57,68 @@ const Dashboard = () => {
         </div>
       </div>
 
+      <div className="usage-panel">
+        <div className="usage-heading">
+          <div>
+            <p className="eyebrow">Piano attuale</p>
+            <h2>{limits.label}</h2>
+          </div>
+
+          <span className="plan-badge">{plan}</span>
+        </div>
+
+        <div className="usage-grid">
+          <div className="usage-card">
+            <div className="usage-card-top">
+              <span>Recap oggi</span>
+              <strong>
+                {dailyCount}/{limits.dailyLimit}
+              </strong>
+            </div>
+
+            <div className="usage-bar">
+              <div style={{ width: `${dailyPercentage}%` }} />
+            </div>
+
+            <p>{limits.dailyLimit - dailyCount} recap disponibili oggi.</p>
+          </div>
+
+          <div className="usage-card">
+            <div className="usage-card-top">
+              <span>Recap mensili</span>
+              <strong>
+                {monthlyCount}/{limits.monthlyLimit}
+              </strong>
+            </div>
+
+            <div className="usage-bar">
+              <div style={{ width: `${monthlyPercentage}%` }} />
+            </div>
+
+            <p>
+              {limits.monthlyLimit - monthlyCount} recap disponibili questo
+              mese.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="dashboard-grid">
         <article className="dashboard-card">
-          <span>Fase attuale</span>
-          <h2>Login + storico</h2>
+          <span>Storico</span>
+          <h2>Recap salvati</h2>
           <p>
-            I recap generati da utenti registrati vengono salvati in Firestore.
+            Ogni recap generato da utente registrato viene salvato nella tua
+            area personale.
           </p>
         </article>
 
         <article className="dashboard-card">
           <span>Prossimo step</span>
-          <h2>Piani e limiti</h2>
+          <h2>Pricing</h2>
           <p>
-            Dopo questa fase potrai aggiungere free plan, limiti giornalieri e
-            dashboard usage.
+            Nel prossimo blocco possiamo creare pagina piani, upgrade visuale e
+            struttura pronta per Stripe.
           </p>
         </article>
 
