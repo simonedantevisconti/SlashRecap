@@ -22,6 +22,18 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Env files
+.env
+.env.local
+.env.*.local
+
+# WhatsApp bot env
+whatsapp-bot/.env
+
+# WhatsApp bot local session
+whatsapp-bot/.wwebjs_auth/
+whatsapp-bot/.wwebjs_cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
